@@ -1,6 +1,6 @@
 # WebClassProjectBackend
 
-Based on [babel/example-node-server]('https://github.com/babel/example-node-server')
+Based on [babel/example-node-server](https://github.com/babel/example-node-server)
 
 ## Initial
 

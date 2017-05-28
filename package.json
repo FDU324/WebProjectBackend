@@ -2,9 +2,9 @@
   "name": "web-project-backend",
   "version": "0.1.0",
   "description": "web-project-backend",
-  "main": "lib/index.js",
+  "main": "./bin/www",
   "scripts": {
-    "start": "nodemon lib/index.js --exec babel-node --presets es2015,stage-2",
+    "start": "nodemon ./bin/www --exec babel-node --presets es2015,stage-2",
     "build": "babel lib -d dist",
     "serve": "node dist/index.js",
     "test": "mocha --compilers js:babel-register"
@@ -22,9 +22,14 @@
   },
   "dependencies": {
     "body-parser": "^1.17.2",
+    "cookie-parser": "~1.4.3",
+    "debug": "~2.6.3",
     "cors": "^2.8.3",
     "express": "^4.15.3",
+    "jade": "~1.11.0",
     "faker": "^4.1.0",
+    "morgan": "~1.8.1",
+    "serve-favicon": "~2.4.2",
     "lodash": "^4.17.4",
     "mysql": "^2.13.0",
     "sequelize": "^3.30.4",
