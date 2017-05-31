@@ -59,8 +59,8 @@ describe('Post Add User Test', () => {
       path:'/user/addUser',
       method:'POST',
       header:{
-        'Content-Type':'application/x-www-form-urlencoded',
-        //'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8',
+        'Content-Type':'application/x-www.js-form-urlencoded',
+        //'Content-Type':'application/x-www.js-form-urlencoded; charset=UTF-8',
         'Content-Length':Buffer.byteLength(postData)
       }
     }

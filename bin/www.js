@@ -159,7 +159,8 @@ io.on('connection', (socket) => {
             });
         }
     });
-
 });
 
-//export {io, currentUsers};
+module.exports = function () {
+    return 1;
+};
