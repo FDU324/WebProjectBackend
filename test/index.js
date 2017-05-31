@@ -1,8 +1,7 @@
-//import http from 'http';
-//import assert from 'assert';
-
-//import '../lib/index.js';
-
+import express from 'express';
+import http from 'http';
+var io = require('socket.io-client');
+/*
 describe('Get Add User Test', () => {
   it('should return 200', done => {
     var http=require('http');
@@ -119,5 +118,16 @@ describe('Modify User Test', () => {
     });
     req.end();
     done();
+  });
+});*/
+
+describe('Socket', () => {
+  it('should return 200', done => {
+    var socket = io.connect('http://localhost');
+    socket.on('news', function (data) {
+      console.log(data);
+      socket.emit('other event', { my: 'data' });
+    });
+
   });
 });
