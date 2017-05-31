@@ -97,6 +97,8 @@ var io = require('socket.io')(server);
 
 var currentUsers = {};
 
+var temNewFriendApply = [];
+
 io.on('connection', (socket) => {
     console.log('a user connected: ' + socket.id);
 
@@ -115,6 +117,15 @@ io.on('connection', (socket) => {
             success: true,
             data: 'success'
         });
+        let applies = [];
+        temNewFriendApply.forEach(apply => {
+            if(apply.to === username){
+                applies.push(apply.from);
+            }
+        });
+        if(applies.length > 0){
+            socket.emit('receiveNewFriendApply',JSON.stringify(applies));
+        }
         console.log(username, ' login');
     });
 
@@ -133,8 +144,19 @@ io.on('connection', (socket) => {
 
     socket.on('newFriendApply', (data, func) => {
         let username = JSON.parse(data);
-        if(currentUsers[username.friendUsername]){
-
+        console.log(currentUsers[username.friendUsername]);
+        if (currentUsers[username.friendUsername]) {
+            currentUsers[username.friendUsername].emit('receiveNewFriendApply', username.myUsername);
+        } else {
+            let temApply = {
+                to: username.friendUsername,
+                from: username.myUsername
+            };
+            temNewFriendApply.push(temApply);
+            func({
+                success: true,
+                data: 'success'
+            });
         }
     });
 
@@ -148,6 +170,7 @@ io.on('connection', (socket) => {
                 data: 'success'
             });
     });
+
 });
 
 //export {io, currentUsers};
