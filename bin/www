@@ -139,10 +139,14 @@ io.on('connection', (socket) => {
     });
 
 
-    socket.on('sendMessage', (from, to, message, func) => {
-        currentUsers[to].emit('receiveMessage', from, message, () => {
-            func();
-        });
+    socket.on('sendMessage', (data, func) => {
+        let jsonData = JSON.parse(data);
+
+        currentUsers[jsonData['to']].emit('receiveMessage', data);
+        func({
+                success: true,
+                data: 'success'
+            });
     });
 });
 
