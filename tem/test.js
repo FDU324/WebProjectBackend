@@ -3,7 +3,7 @@
  */
 import express from 'express';
 
-import {db, TestUser} from './connectors';
+import {db, TestUser} from '../lib/connectors';
 
 const app = express();
 
