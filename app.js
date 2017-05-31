@@ -208,6 +208,16 @@ io.on('connection', (socket) => {
       });
     }
   });
+
+  socket.on('sendMessage', (data, func) => {
+    let jsonData = JSON.parse(data);
+
+    currentUsers[jsonData['to']].emit('receiveMessage', data);
+    func({
+      success: true,
+      data: 'success'
+    });
+  });
 });
 
 module.exports = app;
