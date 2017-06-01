@@ -11,6 +11,8 @@ var index = require('./lib/routes/index');
 var users = require('./lib/routes/users'); 
 var moment = require('./lib/routes/moment');
 
+import {User, Friend, Moment} from './lib/connectors'
+
 var app = express();
 
 app.use(cors());
@@ -218,6 +220,50 @@ io.on('connection', (socket) => {
       data: 'success'
     });
   });
+  
+  socket.on('sendMoment', (data, func) => {
+    let jsonData = JSON.parse(data);
+
+    /*  create Moment  */
+    Moment.create({
+      username: jsonData['username'],
+      type: jsonData['type'],
+      time: jsonData['time'],
+      location: jsonData['location'],
+      emotion: jsonData['emotion'],
+      group: (jsonData['group']==undefined) ? null : jsonData['group'],
+      text: (jsonData['text']==undefined) ? null: jsonData['text'],
+      images: (jsonData['images']==undefined) ? null : jsonData['images'],
+      likeuser: jsonData['likeuser']
+    }).then(function (moment) {
+      console.log('moment created.' + JSON.stringify(moment));
+    }).catch(function (err) {
+      console.log('failed: ' + err);
+    });
+
+    /*  find user's friends and inform them of the new moment  */
+    Friend.findAll({
+      where: {
+        $or: [
+          { first: jsonData['username'] },
+          { second: jsonData['username'] }
+        ]
+      }
+    }).then(friends => {
+      if (friends !== null) {
+        console.log('broadcast moment start');
+        for (let i=0; i<friends.length; i++) {
+          currentUsers[friends[i]].emit('receiveMoment');
+          console.log('broadcast to'+friends[i]);
+        }
+      }
+    });
+
+    func({
+      success: true,
+      data: 'success'
+    });
+  })
 
 });
 
