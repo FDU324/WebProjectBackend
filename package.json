@@ -2,9 +2,9 @@
   "name": "web-project-backend",
   "version": "0.1.0",
   "description": "web-project-backend",
-  "main": "./bin/www",
+  "main": "./app.js",
   "scripts": {
-    "start": "nodemon ./bin/www --exec babel-node --presets es2015,stage-2",
+    "start": "nodemon ./app.js --exec babel-node --presets es2015,stage-2",
     "build": "babel lib -d dist",
     "serve": "node dist/index.js",
     "test": "mocha --compilers js:babel-register"
