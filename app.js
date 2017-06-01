@@ -11,7 +11,7 @@ var index = require('./lib/routes/index');
 var users = require('./lib/routes/users'); 
 var moment = require('./lib/routes/moment');
 
-import {User, Friend, Moment} from './lib/connectors'
+import {User, Friend, Moment, TemMessage} from './lib/connectors'
 
 var app = express();
 
@@ -150,6 +150,7 @@ var currentUsers = {};
 
 var temNewFriendApply = [];
 
+
 io.on('connection', (socket) => {
   console.log('a user connected: ' + socket.id);
 
@@ -168,15 +169,19 @@ io.on('connection', (socket) => {
       success: true,
       data: 'success'
     });
-    let applies = [];
-    temNewFriendApply.forEach(apply => {
-      if(apply.to === username){
-        applies.push(apply.from);
+    TemMessage.findAll({
+      where: { to: username },
+      order: 'type'
+    }).then(tem => {
+      for (let i=0; i<tem.length; i++) {
+        if (tem[i].type === 'friend')
+          socket.emit('receiveNewFriendApply',tem[i].content);
+        else if (tem[i].type === 'message')
+          socket.emit('receiveNewMessage',tem[i].content);
+        else if (tem[i].type === 'moment')
+          socket.emit('receiveNewMoment',tem[i].content);
       }
-    });
-    if(applies.length > 0){
-      socket.emit('receiveNewFriendApply',JSON.stringify(applies));
-    }
+    })
     console.log(username, ' login');
   });
 
@@ -199,22 +204,38 @@ io.on('connection', (socket) => {
     if (currentUsers[username.friendUsername]) {
       currentUsers[username.friendUsername].emit('receiveNewFriendApply', username.myUsername);
     } else {
-      let temApply = {
+      TemMessage.create({
         to: username.friendUsername,
-        from: username.myUsername
-      };
-      temNewFriendApply.push(temApply);
-      func({
-        success: true,
-        data: 'success'
+        type: 'friend',
+        content: username.myUsername,
+      }).then(function () {
+        console.log('temp friend created');
+      }).catch(function (err) {
+        console.log('failed: ' + err);
       });
     }
+    func({
+      success: true,
+      data: 'success'
+    });
   });
 
   socket.on('sendMessage', (data, func) => {
     let jsonData = JSON.parse(data);
 
-    currentUsers[jsonData['to']].emit('receiveMessage', data);
+    if (currentUsers[jsonData.to])
+      currentUsers[jsonData.to].emit('receiveMessage', data);
+    else {
+      TemMessage.create({
+        to: jsonData.to,
+        type: 'message',
+        content: data,
+      }).then(function () {
+        console.log('temp message created');
+      }).catch(function (err) {
+        console.log('failed: ' + err);
+      });
+    }
     func({
       success: true,
       data: 'success'
@@ -226,37 +247,49 @@ io.on('connection', (socket) => {
 
     /*  create Moment  */
     Moment.create({
-      username: jsonData['username'],
-      type: jsonData['type'],
-      time: jsonData['time'],
-      location: jsonData['location'],
-      emotion: jsonData['emotion'],
-      group: (jsonData['group']==undefined) ? null : jsonData['group'],
-      text: (jsonData['text']==undefined) ? null: jsonData['text'],
-      images: (jsonData['images']==undefined) ? null : jsonData['images'],
-      likeuser: jsonData['likeuser']
-    }).then(function (moment) {
+      username: jsonData.username,
+      type: jsonData.type,
+      time: jsonData.time,
+      location: jsonData.location,
+      emotion: jsonData.emotion,
+      group: (jsonData.group==undefined) ? null : jsonData.group,
+      text: (jsonData.text==undefined) ? null: jsonData.text,
+      images: (jsonData.images==undefined) ? null : jsonData.images,
+      likeuser: jsonData.likeuser
+    }).then(moment => {
       console.log('moment created.' + JSON.stringify(moment));
+
+      /*  find user's friends and inform them of the new moment  */
+      Friend.findAll({
+        where: {
+          $or: [
+            { first: jsonData.username },
+            { second: jsonData.username }
+          ]
+        }
+      }).then(friends => {
+        if (friends !== null) {
+          console.log('broadcast moment start');
+          for (let i=0; i<friends.length; i++) {
+            let friend = (friends[i].first===jsonData.username) ? friends[i].second : friends[i].first;
+            if (currentUsers[friend])
+              currentUsers[friend].emit('receiveMoment', JSON.stringify(moment));
+            else {
+              TemMessage.create({
+                to: jsonData.to,
+                type: 'moment',
+                content: JSON.stringify(moment),
+              }).then(function () {
+                console.log('temp moment created');
+              });
+            }
+            console.log('broadcast to'+friend);
+          }
+        }
+      });
+
     }).catch(function (err) {
       console.log('failed: ' + err);
-    });
-
-    /*  find user's friends and inform them of the new moment  */
-    Friend.findAll({
-      where: {
-        $or: [
-          { first: jsonData['username'] },
-          { second: jsonData['username'] }
-        ]
-      }
-    }).then(friends => {
-      if (friends !== null) {
-        console.log('broadcast moment start');
-        for (let i=0; i<friends.length; i++) {
-          currentUsers[friends[i]].emit('receiveMoment');
-          console.log('broadcast to'+friends[i]);
-        }
-      }
     });
 
     func({
