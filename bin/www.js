@@ -4,6 +4,8 @@
  * Module dependencies.
  */
 
+import {TestUser, Friend} from '../lib/connectors';
+
 var app = require('../app');
 var debug = require('debug')('server:server');
 var http = require('http');
@@ -142,11 +144,17 @@ io.on('connection', (socket) => {
         console.log(username, ' logout');
     });
 
-    socket.on('newFriendApply', (data, func) => {
+    socket.on('friendReq', (data, func) => {
         let username = JSON.parse(data);
-        console.log(currentUsers[username.friendUsername]);
+        //console.log(currentUsers[username.friendUsername]);
         if (currentUsers[username.friendUsername]) {
-            currentUsers[username.friendUsername].emit('receiveNewFriendApply', username.myUsername);
+            TestUser.findOne({
+                where: {username: username.myUsername},
+            }).then((user) => {
+                currentUsers[username.friendUsername].emit('receiveFriendReq', JSON.stringify(user));
+            }).catch((err) => {
+                console.log('err:',err);
+            });
         } else {
             let temApply = {
                 to: username.friendUsername,
@@ -159,6 +167,41 @@ io.on('connection', (socket) => {
             });
         }
     });
+
+
+    socket.on('acceptFriendReq', (data, func) => {
+        let username = JSON.parse(data);
+        //console.log(currentUsers[username.friendUsername]);
+        if (currentUsers[username.friendUsername]) {
+            Friend.create({
+                first: username.friendUsername,
+                second: username.myUsername
+            }).then(() => {
+                TestUser.findOne({
+                where: {username: username.myUsername},
+                }).then((user) => {
+                    currentUsers[username.friendUsername].emit('friendReqAssent', JSON.stringify(user));
+                }).catch((err) => {
+                    console.log('err:',err);
+                });
+            }).catch(err => console.log('err:', err))
+            func({
+                success: true,
+                data: 'success'
+            });
+        } else {
+            let temApply = {
+                to: username.friendUsername,
+                from: username.myUsername
+            };
+            temNewFriendApply.push(temApply);
+            func({
+                success: true,
+                data: 'success'
+            });
+        }
+    });
+
 
 
     socket.on('sendMessage', (data, func) => {
