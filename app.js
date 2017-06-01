@@ -162,24 +162,48 @@ io.on('connection', (socket) => {
     });
   });
 
+  /*  登录  */
   socket.on('login', (username, func) => {
     currentUsers[username] = socket;
-    //socket.emit('loginSuccess', 'success');
     func({
       success: true,
       data: 'success'
     });
+    /*  处理离线信息  */
     TemMessage.findAll({
       where: { to: username },
       order: 'type'
     }).then(tem => {
       for (let i=0; i<tem.length; i++) {
-        if (tem[i].type === 'friend')
-          socket.emit('receiveNewFriendApply',tem[i].content);
-        else if (tem[i].type === 'message')
-          socket.emit('receiveNewMessage',tem[i].content);
-        else if (tem[i].type === 'moment')
-          socket.emit('receiveNewMoment',tem[i].content);
+        /*  离线好友请求  */
+        if (tem[i].type === 'friend') {
+          User.findOne({
+            where: {username: tem[i].content}
+          }).then(user => {
+            socket.emit('receiveFriendReq',JSON.stringify(user));
+          })
+        }
+        /*  离线聊天信息  */
+        else if (tem[i].type === 'message') {
+          socket.emit('receiveMessage', tem[i].content);
+
+        }
+        /*  离线动态  */
+        else if (tem[i].type === 'moment') {
+          Moment.findOne({
+            where: {momentId: tem[i].content}
+          }).then(moment => {
+            socket.emit('receiveMoment',JSON.stringify(moment));
+          })
+        }
+        /*  离线好友确认  */
+        else if (tem[i].type === 'acceptFriend') {
+          User.findOne({
+            where: {username: tem[i].content}
+          }).then(user => {
+            socket.emit('friendReqAssent',JSON.stringify(user));
+          })
+        }
       }
     })
     console.log(username, ' login');
@@ -198,12 +222,20 @@ io.on('connection', (socket) => {
     console.log(username, ' logout');
   });
 
-  socket.on('newFriendApply', (data, func) => {
+  /*  好友请求  */
+  socket.on('friendReq', (data, func) => {
     let username = JSON.parse(data);
     console.log(currentUsers[username.friendUsername]);
     if (currentUsers[username.friendUsername]) {
-      currentUsers[username.friendUsername].emit('receiveNewFriendApply', username.myUsername);
+      User.findOne({
+        where: {username: username.myUsername},
+      }).then((user) => {
+        currentUsers[username.friendUsername].emit('receiveFriendReq', JSON.stringify(user));
+      }).catch((err) => {
+        console.log('err:',err);
+      });
     } else {
+      /*  离线处理  */
       TemMessage.create({
         to: username.friendUsername,
         type: 'friend',
@@ -220,12 +252,46 @@ io.on('connection', (socket) => {
     });
   });
 
+  /*  同意好友请求  */
+  socket.on('acceptFriendReq', (data, func) => {
+    let username = JSON.parse(data);
+    /*  数据库新建好友  */
+    Friend.create({
+      first: username.friendUsername,
+      second: username.myUsername
+    }).then(() => {
+      User.findOne({
+        where: {username: username.myUsername},
+      }).then((user) => {
+        if (currentUsers[username.friendUsername]) {
+          currentUsers[username.friendUsername].emit('friendReqAssent', JSON.stringify(user));
+        } else {
+          /*  离线处理  */
+          TemMessage.create({
+            to: username.friendUsername,
+            type: 'acceptFriend',
+            content: username.myUsername,
+          }).then(function () {
+            console.log('temp acceptFriend created');
+          });
+        }
+      })
+    }).catch(err => console.log('err:', err));
+
+    func({
+      success: true,
+      data: 'success'
+    });
+  });
+
+  /*  聊天  */
   socket.on('sendMessage', (data, func) => {
     let jsonData = JSON.parse(data);
 
     if (currentUsers[jsonData.to])
       currentUsers[jsonData.to].emit('receiveMessage', data);
     else {
+      /*  离线处理  */
       TemMessage.create({
         to: jsonData.to,
         type: 'message',
@@ -241,11 +307,12 @@ io.on('connection', (socket) => {
       data: 'success'
     });
   });
-  
+
+  /*  新增动态  */
   socket.on('sendMoment', (data, func) => {
     let jsonData = JSON.parse(data);
 
-    /*  create Moment  */
+    /*  数据库新增动态  */
     Moment.create({
       username: jsonData.username,
       type: jsonData.type,
@@ -258,8 +325,7 @@ io.on('connection', (socket) => {
       likeuser: jsonData.likeuser
     }).then(moment => {
       console.log('moment created.' + JSON.stringify(moment));
-
-      /*  find user's friends and inform them of the new moment  */
+      /*  通知好友  */
       Friend.findAll({
         where: {
           $or: [
@@ -275,10 +341,11 @@ io.on('connection', (socket) => {
             if (currentUsers[friend])
               currentUsers[friend].emit('receiveMoment', JSON.stringify(moment));
             else {
+              /*  离线处理  */
               TemMessage.create({
                 to: jsonData.to,
                 type: 'moment',
-                content: JSON.stringify(moment),
+                content: moment.momentId,
               }).then(function () {
                 console.log('temp moment created');
               });
