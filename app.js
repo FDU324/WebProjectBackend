@@ -205,7 +205,14 @@ io.on('connection', (socket) => {
           })
         }
       }
-    })
+      console.log('temmessage broadcasted');
+    });
+    /*  删除已发送的离线信息  */
+    TemMessage.destroy({
+      where: { to: username }
+    }).then(() => {
+      console.log('temmessage deleted');
+    });
     console.log(username, ' login');
   });
 
