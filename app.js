@@ -284,6 +284,27 @@ io.on('connection', (socket) => {
     });
   });
 
+  /*  删除好友  */
+  socket.on('deleteFriend', (data, func) => {
+    let username = JSON.parse(data);
+    /*  数据库删除好友  */
+    Friend.destroy({
+      where: {
+        $or: [
+          {first: username.friendUsername, second: username.myUsername},
+          {first: username.myUsername, second: username.friendUsername}
+        ]
+      }
+    }).then((friend) => {
+      console.log("friend deleted "+JSON.stringify(friend));
+    }).catch(err => console.log('err:', err));
+
+    func({
+      success: true,
+      data: 'success'
+    });
+  });
+
   /*  聊天  */
   socket.on('sendMessage', (data, func) => {
     let jsonData = JSON.parse(data);
@@ -363,7 +384,23 @@ io.on('connection', (socket) => {
       success: true,
       data: 'success'
     });
-  })
+  });
+
+  /*  删除动态  */
+  socket.on('deleteFriend', (data, func) => {
+    let jsonData = JSON.parse(data);
+    /*  数据库删除动态  */
+    Moment.destroy({
+      where: {momentId: jsonData.momentId}
+    }).then((moment) => {
+      console.log("moment deleted "+JSON.stringify(moment));
+    }).catch(err => console.log('err:', err));
+
+    func({
+      success: true,
+      data: 'success'
+    });
+  });
 
 });
 
