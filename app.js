@@ -371,17 +371,21 @@ io.on('connection', (socket) => {
             Friend.findAll({
                 where: {
                     $or: [
-                        {first: jsonData.username},
-                        {second: jsonData.username}
+                        {first: jsonData.user.username},
+                        {second: jsonData.user.username}
                     ]
                 }
             }).then(friends => {
+                console.log('friends:',friends);
                 if (friends !== null) {
                     console.log('broadcast moment start');
                     for (let i = 0; i < friends.length; i++) {
-                        let friend = (friends[i].first === jsonData.username) ? friends[i].second : friends[i].first;
-                        if (currentUsers[friend])
-                            currentUsers[friend].emit('receiveMoment', JSON.stringify(moment));
+                        let friend = (friends[i].first === jsonData.user.username) ? friends[i].second : friends[i].first;
+                        if (currentUsers[friend]) {
+                            jsonData.user.groups = undefined;
+                            jsonData.group = undefined;
+                            currentUsers[friend].emit('receiveMoment', JSON.stringify(jsonData));
+                        }
                         else {
                             /*  离线处理  */
                             TemMessage.create({
@@ -389,10 +393,10 @@ io.on('connection', (socket) => {
                                 type: 'moment',
                                 content: moment.momentId,
                             }).then(function () {
-                                console.log('temp moment created');
+                                 console.log('temp moment created');
                             });
                         }
-                        console.log('broadcast to' + friend);
+                        console.log('broadcast to ' + friend);      
                     }
                 }
                 func({
