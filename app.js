@@ -11,6 +11,8 @@ var index = require('./lib/routes/index');
 var users = require('./lib/routes/users'); 
 var moment = require('./lib/routes/moment');
 
+var upload = require('./lib/routes/upload');
+
 import {User, Friend, Moment, TemMessage} from './lib/connectors'
 
 var app = express();
@@ -32,6 +34,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', index);
 app.use('/user', users);
 app.use('/moment', moment);
+
+app.use('/upload', upload);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
