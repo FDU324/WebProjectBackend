@@ -8,7 +8,7 @@ var bodyParser = require('body-parser');
 var cors = require('cors');
 
 var index = require('./lib/routes/index');
-var users = require('./lib/routes/users'); 
+var users = require('./lib/routes/users');
 var moment = require('./lib/routes/moment');
 
 var upload = require('./lib/routes/upload');
@@ -27,7 +27,7 @@ app.set('view engine', 'jade');
 //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 app.use(logger('dev'));
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({extended: true}));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -38,21 +38,21 @@ app.use('/moment', moment);
 app.use('/upload', upload);
 
 // catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  var err = new Error('Not Found');
-  err.status = 404;
-  next(err);
+app.use(function (req, res, next) {
+    var err = new Error('Not Found');
+    err.status = 404;
+    next(err);
 });
 
 // error handler
-app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
+app.use(function (err, req, res, next) {
+    // set locals, only providing error in development
+    res.locals.message = err.message;
+    res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-  // render the error page
-  res.status(err.status || 500);
-  res.render('error');
+    // render the error page
+    res.status(err.status || 500);
+    res.render('error');
 });
 
 
@@ -89,19 +89,19 @@ server.on('listening', onListening);
  */
 
 function normalizePort(val) {
-  var port = parseInt(val, 10);
+    var port = parseInt(val, 10);
 
-  if (isNaN(port)) {
-    // named pipe
-    return val;
-  }
+    if (isNaN(port)) {
+        // named pipe
+        return val;
+    }
 
-  if (port >= 0) {
-    // port number
-    return port;
-  }
+    if (port >= 0) {
+        // port number
+        return port;
+    }
 
-  return false;
+    return false;
 }
 
 /**
@@ -109,27 +109,27 @@ function normalizePort(val) {
  */
 
 function onError(error) {
-  if (error.syscall !== 'listen') {
-    throw error;
-  }
+    if (error.syscall !== 'listen') {
+        throw error;
+    }
 
-  var bind = typeof port === 'string'
-      ? 'Pipe ' + port
-      : 'Port ' + port;
+    var bind = typeof port === 'string'
+        ? 'Pipe ' + port
+        : 'Port ' + port;
 
-  // handle specific listen errors with friendly messages
-  switch (error.code) {
-    case 'EACCES':
-      console.error(bind + ' requires elevated privileges');
-      process.exit(1);
-      break;
-    case 'EADDRINUSE':
-      console.error(bind + ' is already in use');
-      process.exit(1);
-      break;
-    default:
-      throw error;
-  }
+    // handle specific listen errors with friendly messages
+    switch (error.code) {
+        case 'EACCES':
+            console.error(bind + ' requires elevated privileges');
+            process.exit(1);
+            break;
+        case 'EADDRINUSE':
+            console.error(bind + ' is already in use');
+            process.exit(1);
+            break;
+        default:
+            throw error;
+    }
 }
 
 /**
@@ -137,11 +137,11 @@ function onError(error) {
  */
 
 function onListening() {
-  var addr = server.address();
-  var bind = typeof addr === 'string'
-      ? 'pipe ' + addr
-      : 'port ' + addr.port;
-  debug('Listening on ' + bind);
+    var addr = server.address();
+    var bind = typeof addr === 'string'
+        ? 'pipe ' + addr
+        : 'port ' + addr.port;
+    debug('Listening on ' + bind);
 }
 
 
@@ -156,69 +156,69 @@ var temNewFriendApply = [];
 
 
 io.on('connection', (socket) => {
-  console.log('a user connected: ' + socket.id);
+    console.log('a user connected: ' + socket.id);
 
-  socket.on('confirmConnect', (data, func) => {
-    //socket.emit('loginSuccess', 'success');
-    func({
-      success: true,
-      data: 'success'
+    socket.on('confirmConnect', (data, func) => {
+        //socket.emit('loginSuccess', 'success');
+        func({
+            success: true,
+            data: 'success'
+        });
     });
-  });
 
-  /*  登录  */
-  socket.on('login', (username, func) => {
-    currentUsers[username] = socket;
-    func({
-      success: true,
-      data: 'success'
-    });
-    /*  处理离线信息  */
-    TemMessage.findAll({
-      where: { to: username },
-      order: 'type'
-    }).then(tem => {
-      for (let i=0; i<tem.length; i++) {
-        /*  离线好友请求  */
-        if (tem[i].type === 'friend') {
-          User.findOne({
-            where: {username: tem[i].content}
-          }).then(user => {
-            socket.emit('receiveFriendReq',JSON.stringify(user));
-          })
-        }
-        /*  离线聊天信息  */
-        else if (tem[i].type === 'message') {
-          socket.emit('receiveMessage', tem[i].content);
+    /*  登录  */
+    socket.on('login', (username, func) => {
+        currentUsers[username] = socket;
+        func({
+            success: true,
+            data: 'success'
+        });
+        /*  处理离线信息  */
+        TemMessage.findAll({
+            where: {to: username},
+            order: 'type'
+        }).then(tem => {
+            for (let i = 0; i < tem.length; i++) {
+                /*  离线好友请求  */
+                if (tem[i].type === 'friend') {
+                    User.findOne({
+                        where: {username: tem[i].content}
+                    }).then(user => {
+                        socket.emit('receiveFriendReq', JSON.stringify(user));
+                    })
+                }
+                /*  离线聊天信息  */
+                else if (tem[i].type === 'message') {
+                    socket.emit('receiveMessage', tem[i].content);
 
-        }
-        /*  离线动态  */
-        else if (tem[i].type === 'moment') {
-          Moment.findOne({
-            where: {momentId: tem[i].content}
-          }).then(moment => {
-            socket.emit('receiveMoment',JSON.stringify(moment));
-          })
-        }
-        /*  离线好友确认  */
-        else if (tem[i].type === 'acceptFriend') {
-          User.findOne({
-            where: {username: tem[i].content}
-          }).then(user => {
-            socket.emit('friendReqAssent',JSON.stringify(user));
-          })
-        }
-      }
-      console.log('temmessage broadcasted');
+                }
+                /*  离线动态  */
+                else if (tem[i].type === 'moment') {
+                    Moment.findOne({
+                        where: {momentId: tem[i].content}
+                    }).then(moment => {
+                        socket.emit('receiveMoment', JSON.stringify(moment));
+                    })
+                }
+                /*  离线好友确认  */
+                else if (tem[i].type === 'acceptFriend') {
+                    User.findOne({
+                        where: {username: tem[i].content}
+                    }).then(user => {
+                        socket.emit('friendReqAssent', JSON.stringify(user));
+                    })
+                }
+            }
+            console.log('temmessage broadcasted');
+        });
+        /*  删除已发送的离线信息  */
+        TemMessage.destroy({
+            where: {to: username}
+        }).then(() => {
+            console.log('temmessage deleted');
+        });
+        console.log(username, ' login');
     });
-    /*  删除已发送的离线信息  */
-    TemMessage.destroy({
-      where: { to: username }
-    }).then(() => {
-      console.log('temmessage deleted');
-    });
-    console.log(username, ' login');
-  });
 
     // 前台断开socket连接
     socket.on('disconnect', () => {
@@ -235,185 +235,197 @@ io.on('connection', (socket) => {
         console.log(username, ' logout');
     });
 
-  /*  好友请求  */
-  socket.on('friendReq', (data, func) => {
-    let username = JSON.parse(data);
-    console.log(currentUsers[username.friendUsername]);
-    if (currentUsers[username.friendUsername]) {
-      User.findOne({
-        where: {username: username.myUsername},
-      }).then((user) => {
-        currentUsers[username.friendUsername].emit('receiveFriendReq', JSON.stringify(user));
-      }).catch((err) => {
-        console.log('err:',err);
-      });
-    } else {
-      /*  离线处理  */
-      TemMessage.create({
-        to: username.friendUsername,
-        type: 'friend',
-        content: username.myUsername,
-      }).then(function () {
-        console.log('temp friend created');
-      }).catch(function (err) {
-        console.log('failed: ' + err);
-      });
-    }
-    func({
-      success: true,
-      data: 'success'
-    });
-  });
-
-  /*  同意好友请求  */
-  socket.on('acceptFriendReq', (data, func) => {
-    let username = JSON.parse(data);
-    /*  数据库新建好友  */
-    Friend.create({
-      first: username.friendUsername,
-      second: username.myUsername
-    }).then(() => {
-      User.findOne({
-        where: {username: username.myUsername},
-      }).then((user) => {
+    /*  好友请求  */
+    socket.on('friendReq', (data, func) => {
+        let username = JSON.parse(data);
+        console.log(currentUsers[username.friendUsername]);
         if (currentUsers[username.friendUsername]) {
-          currentUsers[username.friendUsername].emit('friendReqAssent', JSON.stringify(user));
+            User.findOne({
+                where: {username: username.myUsername},
+            }).then((user) => {
+                currentUsers[username.friendUsername].emit('receiveFriendReq', JSON.stringify(user));
+            }).catch((err) => {
+                console.log('err:', err);
+            });
         } else {
-          /*  离线处理  */
-          TemMessage.create({
-            to: username.friendUsername,
-            type: 'acceptFriend',
-            content: username.myUsername,
-          }).then(function () {
-            console.log('temp acceptFriend created');
-          });
+            /*  离线处理  */
+            TemMessage.create({
+                to: username.friendUsername,
+                type: 'friend',
+                content: username.myUsername,
+            }).then(function () {
+                console.log('temp friend created');
+            }).catch(function (err) {
+                console.log('failed: ' + err);
+            });
         }
-      })
-    }).catch(err => console.log('err:', err));
-
-    func({
-      success: true,
-      data: 'success'
+        func({
+            success: true,
+            data: 'success'
+        });
     });
-  });
 
-  /*  删除好友  */
-  socket.on('deleteFriend', (data, func) => {
-    let username = JSON.parse(data);
-    /*  数据库删除好友  */
-    Friend.destroy({
-      where: {
-        $or: [
-          {first: username.friendUsername, second: username.myUsername},
-          {first: username.myUsername, second: username.friendUsername}
-        ]
-      }
-    }).then((friend) => {
-      console.log("friend deleted "+JSON.stringify(friend));
-    }).catch(err => console.log('err:', err));
+    /*  同意好友请求  */
+    socket.on('acceptFriendReq', (data, func) => {
+        let username = JSON.parse(data);
+        /*  数据库新建好友  */
+        Friend.create({
+            first: username.friendUsername,
+            second: username.myUsername
+        }).then(() => {
+            User.findOne({
+                where: {username: username.myUsername},
+            }).then((user) => {
+                if (currentUsers[username.friendUsername]) {
+                    currentUsers[username.friendUsername].emit('friendReqAssent', JSON.stringify(user));
+                } else {
+                    /*  离线处理  */
+                    TemMessage.create({
+                        to: username.friendUsername,
+                        type: 'acceptFriend',
+                        content: username.myUsername,
+                    }).then(function () {
+                        console.log('temp acceptFriend created');
+                    });
+                }
+            })
+        }).catch(err => console.log('err:', err));
 
-    func({
-      success: true,
-      data: 'success'
+        func({
+            success: true,
+            data: 'success'
+        });
     });
-  });
 
-  /*  聊天  */
-  socket.on('sendMessage', (data, func) => {
-    let jsonData = JSON.parse(data);
-
-    if (currentUsers[jsonData.to])
-      currentUsers[jsonData.to].emit('receiveMessage', data);
-    else {
-      /*  离线处理  */
-      TemMessage.create({
-        to: jsonData.to,
-        type: 'message',
-        content: data,
-      }).then(function () {
-        console.log('temp message created');
-      }).catch(function (err) {
-        console.log('failed: ' + err);
-      });
-    }
-    func({
-      success: true,
-      data: 'success'
-    });
-  });
-
-  /*  新增动态  */
-  socket.on('sendMoment', (data, func) => {
-    let jsonData = JSON.parse(data);
-
-    /*  数据库新增动态  */
-    Moment.create({
-      username: jsonData.username,
-      type: jsonData.type,
-      time: jsonData.time,
-      location: jsonData.location,
-      emotion: jsonData.emotion,
-      group: (jsonData.group==undefined) ? null : jsonData.group,
-      text: (jsonData.text==undefined) ? null: jsonData.text,
-      images: (jsonData.images==undefined) ? null : jsonData.images,
-      likeuser: jsonData.likeuser
-    }).then(moment => {
-      console.log('moment created.' + JSON.stringify(moment));
-      /*  通知好友  */
-      Friend.findAll({
-        where: {
-          $or: [
-            { first: jsonData.username },
-            { second: jsonData.username }
-          ]
-        }
-      }).then(friends => {
-        if (friends !== null) {
-          console.log('broadcast moment start');
-          for (let i=0; i<friends.length; i++) {
-            let friend = (friends[i].first===jsonData.username) ? friends[i].second : friends[i].first;
-            if (currentUsers[friend])
-              currentUsers[friend].emit('receiveMoment', JSON.stringify(moment));
-            else {
-              /*  离线处理  */
-              TemMessage.create({
-                to: jsonData.to,
-                type: 'moment',
-                content: moment.momentId,
-              }).then(function () {
-                console.log('temp moment created');
-              });
+    /*  删除好友  */
+    socket.on('deleteFriend', (data, func) => {
+        let username = JSON.parse(data);
+        /*  数据库删除好友  */
+        Friend.destroy({
+            where: {
+                $or: [
+                    {first: username.friendUsername, second: username.myUsername},
+                    {first: username.myUsername, second: username.friendUsername}
+                ]
             }
-            console.log('broadcast to'+friend);
-          }
+        }).then((friend) => {
+            console.log("friend deleted " + JSON.stringify(friend));
+        }).catch(err => console.log('err:', err));
+
+        func({
+            success: true,
+            data: 'success'
+        });
+    });
+
+    /*  聊天  */
+    socket.on('sendMessage', (data, func) => {
+        let jsonData = JSON.parse(data);
+
+        if (currentUsers[jsonData.to])
+            currentUsers[jsonData.to].emit('receiveMessage', data);
+        else {
+            /*  离线处理  */
+            TemMessage.create({
+                to: jsonData.to,
+                type: 'message',
+                content: data,
+            }).then(function () {
+                console.log('temp message created');
+            }).catch(function (err) {
+                console.log('failed: ' + err);
+            });
         }
-      });
-
-    }).catch(function (err) {
-      console.log('failed: ' + err);
+        func({
+            success: true,
+            data: 'success'
+        });
     });
 
-    func({
-      success: true,
-      data: 'success'
-    });
-  });
+    /*  新增动态  */
+    socket.on('sendMoment', (data, func) => {
+        let jsonData = JSON.parse(data);
 
-  /*  删除动态  */
-  socket.on('deleteFriend', (data, func) => {
-    let jsonData = JSON.parse(data);
-    /*  数据库删除动态  */
-    Moment.destroy({
-      where: {momentId: jsonData.momentId}
-    }).then((moment) => {
-      console.log("moment deleted "+JSON.stringify(moment));
-    }).catch(err => console.log('err:', err));
+        // 转为username
+        let groupUsername = jsonData.group.map(member=>{
+            return member.username;
+        });
+        let likeUserUsername = jsonData.likeuser.map(member=>{
+            return member.username;
+        });
 
-    func({
-      success: true,
-      data: 'success'
+        /*  数据库新增动态  */
+        Moment.create({
+            username: jsonData.user.username,
+            type: jsonData.type,
+            time: jsonData.time,
+            location: JSON.stringify(jsonData.location),
+            emotion: JSON.stringify(jsonData.emotion),
+            group: JSON.stringify(groupUsername),
+            text: jsonData.text,
+            images: JSON.stringify(jsonData.images),
+            likeuser: JSON.stringify(likeUserUsername)
+        }).then(moment => {
+            console.log('moment created.' + JSON.stringify(moment));
+            /*  通知好友  */
+            Friend.findAll({
+                where: {
+                    $or: [
+                        {first: jsonData.username},
+                        {second: jsonData.username}
+                    ]
+                }
+            }).then(friends => {
+                if (friends !== null) {
+                    console.log('broadcast moment start');
+                    for (let i = 0; i < friends.length; i++) {
+                        let friend = (friends[i].first === jsonData.username) ? friends[i].second : friends[i].first;
+                        if (currentUsers[friend])
+                            currentUsers[friend].emit('receiveMoment', JSON.stringify(moment));
+                        else {
+                            /*  离线处理  */
+                            TemMessage.create({
+                                to: jsonData.to,
+                                type: 'moment',
+                                content: moment.momentId,
+                            }).then(function () {
+                                console.log('temp moment created');
+                            });
+                        }
+                        console.log('broadcast to' + friend);
+                    }
+                }
+                func({
+                    success: true,
+                    data: 'success',
+                });
+            });
+
+        }).catch(function (err) {
+            console.log('failed: ' + err);
+            func({
+                success: false,
+                data: err
+            });
+        });
+
     });
-  });
+
+    /*  删除动态  */
+    socket.on('deleteFriend', (data, func) => {
+        let jsonData = JSON.parse(data);
+        /*  数据库删除动态  */
+        Moment.destroy({
+            where: {momentId: jsonData.momentId}
+        }).then((moment) => {
+            console.log("moment deleted " + JSON.stringify(moment));
+        }).catch(err => console.log('err:', err));
+
+        func({
+            success: true,
+            data: 'success'
+        });
+    });
 
 });
 
