@@ -440,7 +440,7 @@ io.on('connection', (socket) => {
     });
 
     /*  删除动态  */
-    socket.on('deleteFriend', (data, func) => {
+    socket.on('deleteMoment', (data, func) => {
         let jsonData = JSON.parse(data);
         /*  数据库删除动态  */
         Moment.destroy({
