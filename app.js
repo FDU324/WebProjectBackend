@@ -457,10 +457,10 @@ io.on('connection', (socket) => {
 
     // 赞
     socket.on('changeLike', (data, func) => {
-        let jsonDate = JSON.parse(data);
-        let receiveMoment = jsonDate.moment;
-        let username = jsonDate.username;
-        let changeTO = jsonDate.changeTO;
+        let jsonData = JSON.parse(data);
+        let receiveMoment = jsonData.moment;
+        let username = jsonData.username;
+        let changeTO = jsonData.changeTO;
 
         // 查找动态
         Moment.findOne({
