@@ -199,6 +199,21 @@ io.on('connection', (socket) => {
                             return socket.emit('receiveChangeLike', JSON.stringify(temInfo));
                         });
                     }
+                    /*  离线 评论  */
+                    else if (tem.type === 'comment') {
+                        let temData = JSON.parse(tem.content);
+                        let momentId = temData.id;
+                        let showAlert = temData.showAlert;
+                        let username = tem.to;
+                        return returnMoment(momentId, username).then(receiveMoment => {
+                            let temInfo = {
+                                receiveMoment: receiveMoment,
+                                showAlert: showAlert
+                            };
+
+                            return socket.emit('receiveComment', JSON.stringify(temInfo));
+                        });
+                    }
                     /*  离线好友确认  */
                     else if (tem.type === 'acceptFriend') {
                         return User.findOne({
