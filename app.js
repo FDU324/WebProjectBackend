@@ -278,6 +278,10 @@ io.on('connection', (socket) => {
                         return socket.emit('receiveMoment', JSON.stringify(moment));
                     });
                 }
+                /*  离线动态删除  */
+                else if (tem.type === 'momentDelete') {
+                    return socket.emit('deleteMoment', tem.content);
+                }
                 /*  离线 赞  */
                 else if (tem.type === 'like') {
                     let temContent = JSON.parse(tem.content);
@@ -424,8 +428,8 @@ io.on('connection', (socket) => {
                     {first: username.myUsername, second: username.friendUsername}
                 ]
             }
-        }).then((friend) => {
-            console.log("friend deleted " + JSON.stringify(friend));
+        }).then(() => {
+            console.log("friend deleted " + username.myUsername);
             func({
                 success: true,
                 data: 'success'
@@ -508,7 +512,7 @@ io.on('connection', (socket) => {
             }
 
             /*  通知好友  */
-            if (jsonData.type==='public') {
+            if (moment.type==='public') {
                 Friend.findAll({
                     where: {
                         $or: [
@@ -540,7 +544,7 @@ io.on('connection', (socket) => {
                         }
                     }
                 });
-            } else if (jsonData.type==='group') {
+            } else if (moment.type==='group') {
                 let group = JSON.parse(moment.group);
                 group.forEach(friend => {
                     if (currentUsers[friend]) {      // 在线
@@ -576,24 +580,67 @@ io.on('connection', (socket) => {
         /*  数据库删除动态  */
         Moment.destroy({
             where: {id: jsonData.id}
-        }).then((moment) => {
-            console.log("moment deleted " + JSON.stringify(moment));
-        }).catch(err => console.log('err:', err));
+        }).then(() => {
+            console.log("moment deleted " + jsonData.id);
+            if (currentUsers[jsonData.user.username]) {    // 在线
+                currentUsers[jsonData.user.username].emit('deleteMoment', jsonData.id);
+            } else {      // 离线
+                TemMessage.create({
+                    to: jsonData.user.username,
+                    type: "momentDelete",
+                    content: jsonData.id,
+                }).then(() => {
+                    console.log('temp moment delete created, broadcast to ' + jsonData.user.username);
+                });
+            }
 
-        func({
-            success: true,
-            data: 'success'
-        });
-    });
-
-    /*  删除评论  */
-    socket.on('deleteComment', (data, func) => {
-        let jsonData = JSON.parse(data);
-        /*  数据库删除评论  */
-        Comment.destroy({
-            where: {id: jsonData.id}
-        }).then((comment) => {
-            console.log("comment deleted " + JSON.stringify(comment));
+            /*  通知好友  */
+            if (jsonData.type==='public') {
+                Friend.findAll({
+                    where: {
+                        $or: [
+                            {first: jsonData.user.username},
+                            {second: jsonData.user.username}
+                        ]
+                    }
+                }).then(friends => {
+                    // console.log('friends:', friends);
+                    if (friends !== null) {
+                        console.log('broadcast moment start');
+                        for (let i = 0; i < friends.length; i++) {
+                            let friend = (friends[i].first === jsonData.user.username) ? friends[i].second : friends[i].first;
+                            if (currentUsers[friend]) {     // 在线
+                                currentUsers[friend].emit('deleteMoment', jsonData.id);
+                                console.log('broadcast to ' + friend);
+                            }
+                            else {                      // 离线
+                                TemMessage.create({
+                                    to: friend,
+                                    type: 'momentDelete',
+                                    content: jsonData.id,
+                                }).then(() => {
+                                    console.log('temp moment delete created, broadcast to ' + friend);
+                                });
+                            }
+                        }
+                    }
+                });
+            } else if (jsonData.type==='group') {
+                let group = JSON.parse(jsonData.group);
+                group.forEach(friend => {
+                    if (currentUsers[friend]) {      // 在线
+                        currentUsers[friend].emit('deleteMoment', jsonData.id);
+                    } else {      // 离线
+                        TemMessage.create({
+                            to: friend,
+                            type: 'momentDelete',
+                            content: jsonData.id,
+                        }).then(() => {
+                            console.log('temp moment delete created, broadcast to ' + friend);
+                        });
+                    }
+                });
+            }
         }).catch(err => console.log('err:', err));
 
         func({
