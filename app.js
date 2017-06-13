@@ -246,6 +246,11 @@ io.on('connection', (socket) => {
 
     /*  登录  */
     socket.on('login', (username, func) => {
+        /*  用户顶替  */
+        if (currentUsers[username]!==null) {
+            currentUsers[username].emit('logout');
+        }
+        
         currentUsers[username] = socket;
         func({
             success: true,
