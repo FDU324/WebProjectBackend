@@ -699,7 +699,7 @@ io.on('connection', (socket) => {
 
     });
 
-    // 添加评论
+    // 评论
     socket.on('comment', (data, func) => {
         let jsonData = JSON.parse(data);
 
@@ -723,11 +723,16 @@ io.on('connection', (socket) => {
                 resolve(tem);
             } else if (actionType === 'delete') {
                 // 删除评论
+                if(jsonData.comment.user.username !== jsonData.username){
+                    resolve('error');
+                }
+
                 let tem = Comment.destroy({
                     where: {
-                        id: jsonData.commentID
+                        id: jsonData.comment.id
                     },
                 }).then((count) => {
+                    console.log(count);
                     return 'success';
                 }).catch((err) => {
                     console.log('moment delete error', err);
@@ -742,11 +747,14 @@ io.on('connection', (socket) => {
         // 通知
         databaseAction.then(actionResult => {
             console.log(actionResult);
+
             if (actionResult !== 'success') {
+                func({
+                    success: false,
+                    data: actionResult
+                });
                 return 'error';
             }
-
-            console.log('here');
 
             func({
                 success: true,
@@ -762,7 +770,7 @@ io.on('connection', (socket) => {
                     returnMoment(moment.id, moment.username).then(receiveMoment => {
                         let temInfo = {
                             receiveMoment: receiveMoment,
-                            showAlert: true
+                            showAlert: actionType==='create'
                         };
 
                         // 自己给自己评论，不需要提示count++
