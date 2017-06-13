@@ -470,38 +470,73 @@ io.on('connection', (socket) => {
                 data: 'success',
             });
 
+            if (currentUsers[moment.username]) {    // 在线
+                returnMoment(moment.id, moment.username).then(receiveMoment => {
+                    currentUsers[moment.username].emit('receiveMoment', JSON.stringify(receiveMoment));
+                });
+            } else {      // 离线
+                TemMessage.create({
+                    to: moment.username,
+                    type: "moment",
+                    content: moment.id,
+                }).then(() => {
+                    console.log('temp moment created, broadcast to ' + moment.username);
+                });
+            }
+
             /*  通知好友  */
-            Friend.findAll({
-                where: {
-                    $or: [
-                        {first: jsonData.user.username},
-                        {second: jsonData.user.username}
-                    ]
-                }
-            }).then(friends => {
-                // console.log('friends:', friends);
-                if (friends !== null) {
-                    console.log('broadcast moment start');
-                    for (let i = 0; i < friends.length; i++) {
-                        let friend = (friends[i].first === jsonData.user.username) ? friends[i].second : friends[i].first;
-                        if (currentUsers[friend]) {     // 在线
-                            returnMoment(moment.id, friend).then(receiveMoment => {
-                                currentUsers[friend].emit('receiveMoment', JSON.stringify(receiveMoment));
-                                console.log('broadcast to ' + friend);
-                            });
-                        }
-                        else {                      // 离线
-                            TemMessage.create({
-                                to: friend,
-                                type: 'moment',
-                                content: moment.id,
-                            }).then(() => {
-                                console.log('temp moment created ', 'broadcast to ' + friend);
-                            });
+            if (jsonData.type==='public') {
+                Friend.findAll({
+                    where: {
+                        $or: [
+                            {first: jsonData.user.username},
+                            {second: jsonData.user.username}
+                        ]
+                    }
+                }).then(friends => {
+                    // console.log('friends:', friends);
+                    if (friends !== null) {
+                        console.log('broadcast moment start');
+                        for (let i = 0; i < friends.length; i++) {
+                            let friend = (friends[i].first === jsonData.user.username) ? friends[i].second : friends[i].first;
+                            if (currentUsers[friend]) {     // 在线
+                                returnMoment(moment.id, friend).then(receiveMoment => {
+                                    currentUsers[friend].emit('receiveMoment', JSON.stringify(receiveMoment));
+                                    console.log('broadcast to ' + friend);
+                                });
+                            }
+                            else {                      // 离线
+                                TemMessage.create({
+                                    to: friend,
+                                    type: 'moment',
+                                    content: moment.id,
+                                }).then(() => {
+                                    console.log('temp moment created, broadcast to ' + friend);
+                                });
+                            }
                         }
                     }
-                }
-            });
+                });
+            } else if (jsonData.type==='group') {
+                let group = JSON.parse(moment.group);
+                group.forEach(friend => {
+                    if (currentUsers[friend]) {      // 在线
+                        returnMoment(moment.id, friend).then(receiveMoment => {
+                            // console.log(receiveMoment);
+                            currentUsers[friend].emit('receiveMoment', JSON.stringify(receiveMoment));
+                        });
+                    } else {      // 离线
+                        TemMessage.create({
+                            to: friend,
+                            type: 'moment',
+                            content: moment.id,
+                        }).then(() => {
+                            console.log('temp moment created, broadcast to ' + friend);
+                        });
+                    }
+                });
+            }
+            
         }).catch((err) => {
             console.log('failed: ' + err);
             func({
@@ -517,9 +552,25 @@ io.on('connection', (socket) => {
         let jsonData = JSON.parse(data);
         /*  数据库删除动态  */
         Moment.destroy({
-            where: {id: jsonData.momentId}
+            where: {id: jsonData.id}
         }).then((moment) => {
             console.log("moment deleted " + JSON.stringify(moment));
+        }).catch(err => console.log('err:', err));
+
+        func({
+            success: true,
+            data: 'success'
+        });
+    });
+
+    /*  删除评论  */
+    socket.on('deleteComment', (data, func) => {
+        let jsonData = JSON.parse(data);
+        /*  数据库删除评论  */
+        Comment.destroy({
+            where: {id: jsonData.id}
+        }).then((comment) => {
+            console.log("comment deleted " + JSON.stringify(comment));
         }).catch(err => console.log('err:', err));
 
         func({
@@ -633,31 +684,31 @@ io.on('connection', (socket) => {
                     });
                 } else {        // 通知分组好友
                     group.forEach(friend => {
-                        if (currentUsers[friend]) {      // 在线
-                            returnMoment(moment.id, friend).then(receiveMoment => {
-                                // console.log(receiveMoment);
+                            if (currentUsers[friend]) {      // 在线
+                                returnMoment(moment.id, friend).then(receiveMoment => {
+                                    // console.log(receiveMoment);
+                                    let temInfo = {
+                                        receiveMoment: receiveMoment,
+                                        changeTO: changeTO,
+                                        isOwner: false
+                                    };
+                                    currentUsers[friend].emit('receiveChangeLike', JSON.stringify(temInfo));
+                                });
+                            } else {      // 离线
                                 let temInfo = {
-                                    receiveMoment: receiveMoment,
+                                    id: moment.id,
                                     changeTO: changeTO,
                                     isOwner: false
                                 };
-                                currentUsers[friend].emit('receiveChangeLike', JSON.stringify(temInfo));
-                            });
-                        } else {      // 离线
-                            let temInfo = {
-                                id: moment.id,
-                                changeTO: changeTO,
-                                isOwner: false
-                            };
 
-                            TemMessage.create({
-                                to: friend,
-                                type: "like",
-                                content: JSON.stringify(temInfo),
-                            }).then(() => {
-                                console.log('temp like created');
-                            });
-                        }
+                                TemMessage.create({
+                                    to: friend,
+                                    type: "like",
+                                    content: JSON.stringify(temInfo),
+                                }).then(() => {
+                                    console.log('temp like created');
+                                });
+                            }
                     });
                 }
 
