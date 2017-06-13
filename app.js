@@ -12,7 +12,7 @@ import {users} from './lib/routes/users';
 import {moment} from './lib/routes/moment';
 import {upload} from './lib/routes/upload';
 
-import {User, Friend, Moment, TemMessage} from './lib/connectors'
+import {User, Friend, Moment, TemMessage, Comment} from './lib/connectors'
 import {returnMoment} from './lib/util';
 
 const app = express();
@@ -59,27 +59,23 @@ app.use(function (err, req, res, next) {
 /**
  * Module dependencies.
  */
-
 const debug = require('debug')('server:server');
 import http from 'http';
 
 /**
  * Get port from environment and store in Express.
  */
-
 const port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
 
 /**
  * Create HTTP server.
  */
-
 const server = http.createServer(app);
 
 /**
  * Listen on provided port, on all network interfaces.
  */
-
 server.listen(port);
 server.on('error', onError);
 server.on('listening', onListening);
@@ -87,7 +83,6 @@ server.on('listening', onListening);
 /**
  * Normalize a port into a number, string, or false.
  */
-
 function normalizePort(val) {
     const port = parseInt(val, 10);
 
@@ -107,7 +102,6 @@ function normalizePort(val) {
 /**
  * Event listener for HTTP server "error" event.
  */
-
 function onError(error) {
     if (error.syscall !== 'listen') {
         throw error;
@@ -135,7 +129,6 @@ function onError(error) {
 /**
  * Event listener for HTTP server "listening" event.
  */
-
 function onListening() {
     const addr = server.address();
     const bind = typeof addr === 'string'
@@ -204,6 +197,21 @@ io.on('connection', (socket) => {
                                 isOwner: temContent.isOwner
                             };
                             return socket.emit('receiveChangeLike', JSON.stringify(temInfo));
+                        });
+                    }
+                    /*  离线 评论  */
+                    else if (tem.type === 'comment') {
+                        let temData = JSON.parse(tem.content);
+                        let momentId = temData.id;
+                        let showAlert = temData.showAlert;
+                        let username = tem.to;
+                        return returnMoment(momentId, username).then(receiveMoment => {
+                            let temInfo = {
+                                receiveMoment: receiveMoment,
+                                showAlert: showAlert
+                            };
+
+                            return socket.emit('receiveComment', JSON.stringify(temInfo));
                         });
                     }
                     /*  离线好友确认  */
@@ -280,6 +288,21 @@ io.on('connection', (socket) => {
                             isOwner: temContent.isOwner
                         };
                         return socket.emit('receiveChangeLike', JSON.stringify(temInfo));
+                    });
+                }
+                /*  离线 评论  */
+                else if (tem.type === 'comment') {
+                    let temData = JSON.parse(tem.content);
+                    let momentId = temData.id;
+                    let showAlert = temData.showAlert;
+                    let username = tem.to;
+                    return returnMoment(momentId, username).then(receiveMoment => {
+                        let temInfo = {
+                            receiveMoment: receiveMoment,
+                            showAlert: showAlert
+                        };
+
+                        return socket.emit('receiveComment', JSON.stringify(temInfo));
                     });
                 }
                 /*  离线好友确认  */
@@ -727,6 +750,199 @@ io.on('connection', (socket) => {
 
     });
 
+    // 评论
+    socket.on('comment', (data, func) => {
+        let jsonData = JSON.parse(data);
+
+        let actionType = jsonData.actionType;
+        let databaseAction = new Promise((resolve, reject) => {
+            if (actionType === 'create') {
+                // 增加评论
+                let tem = Comment.create({
+                    momentId: jsonData.moment.id,
+                    username: jsonData.username,
+                    to: jsonData.to,
+                    content: jsonData.content,
+                    time: Date.now()
+                }).then((count) => {
+                    return 'success';
+                }).catch((err) => {
+                    console.log('moment create error', err);
+                    return err;
+                });
+
+                resolve(tem);
+            } else if (actionType === 'delete') {
+                // 删除评论
+                if(jsonData.comment.user.username !== jsonData.username){
+                    resolve('error');
+                }
+
+                let tem = Comment.destroy({
+                    where: {
+                        id: jsonData.comment.id
+                    },
+                }).then((count) => {
+                    console.log(count);
+                    return 'success';
+                }).catch((err) => {
+                    console.log('moment delete error', err);
+                    return err;
+                });
+                resolve(tem);
+            } else {
+                resolve('default');
+            }
+        });
+
+        // 通知
+        databaseAction.then(actionResult => {
+            console.log(actionResult);
+
+            if (actionResult !== 'success') {
+                func({
+                    success: false,
+                    data: actionResult
+                });
+                return 'error';
+            }
+
+            func({
+                success: true,
+                data: 'success'
+            });
+
+            // 获取动态
+            Moment.findOne({
+                where: {id: jsonData.moment.id},
+            }).then(moment => {
+                // 通知发动态的用户，实际需要返回给前台的是整个包装后的moment，其他返回的数据是为了显示红点的具体内容（暂没做）
+                if (currentUsers[moment.username]) {
+                    returnMoment(moment.id, moment.username).then(receiveMoment => {
+                        let temInfo = {
+                            receiveMoment: receiveMoment,
+                            showAlert: actionType==='create'
+                        };
+
+                        // 自己给自己评论，不需要提示count++
+                        if (jsonData.moment.user.username === jsonData.username) {
+                            temInfo.showAlert = false;
+                        }
+
+                        currentUsers[moment.username].emit('receiveComment', JSON.stringify(temInfo));
+                    });
+                } else {  // 离线
+                    let temInfo = {
+                        id: moment.id,
+                        showAlert: true
+                    };
+
+                    TemMessage.create({
+                        to: moment.username,
+                        type: 'comment',
+                        content: JSON.stringify(temInfo),
+                    }).then(() => {
+                        console.log('temp message: comment created');
+                    }).catch((err) => {
+                        console.log('failed: ' + err);
+                    });
+                }
+
+
+                // 通知可见该动态的好友
+                let type = moment.type;
+                let group = JSON.parse(moment.group);
+
+                if (type === 'public') {
+                    Friend.findAll({
+                        where: {
+                            $or: [
+                                {first: moment.username},
+                                {second: moment.username}
+                            ]
+                        }
+                    }).then((friends) => {
+                        friends.forEach(friend => {
+                            let temUsername = friend.first === moment.username ? friend.second : friend.first;
+                            if (currentUsers[temUsername]) {      // 在线
+                                returnMoment(moment.id, temUsername).then(receiveMoment => {
+                                    // console.log(receiveMoment);
+                                    let temInfo = {
+                                        receiveMoment: receiveMoment,
+                                        showAlert: false
+                                    };
+
+                                    // 评论的对象可以接收提醒
+                                    if (jsonData.to !== '' && temUsername === jsonData.to) {
+                                        temInfo.showAlert = true;
+                                    }
+                                    currentUsers[temUsername].emit('receiveComment', JSON.stringify(temInfo));
+                                });
+                            } else {      // 离线
+                                let temInfo = {
+                                    id: moment.id,
+                                    showAlert: false
+                                };
+                                // 评论的对象可以接收提醒
+                                if (jsonData.to !== '' && temUsername === jsonData.to) {
+                                    temInfo.showAlert = true;
+                                }
+
+                                TemMessage.create({
+                                    to: temUsername,
+                                    type: "comment",
+                                    content: JSON.stringify(temInfo),
+                                }).then(() => {
+                                    console.log('temp message: comment created');
+                                });
+                            }
+                        });
+                    }).catch((err) => {
+                        console.log('failed: ' + err);
+                    });
+                } else {        // 通知分组好友
+                    group.forEach(friend => {
+                        if (currentUsers[friend]) {      // 在线
+                            returnMoment(moment.id, friend).then(receiveMoment => {
+                                // console.log(receiveMoment);
+                                let temInfo = {
+                                    receiveMoment: receiveMoment,
+                                    showAlert: false
+                                };
+                                // 评论的对象可以接收提醒
+                                if (jsonData.to !== '' && friend === jsonData.to) {
+                                    temInfo.showAlert = true;
+                                }
+
+                                currentUsers[friend].emit('receiveComment', JSON.stringify(temInfo));
+                            });
+                        } else {      // 离线
+                            let temInfo = {
+                                id: moment.id,
+                                showAlert: false
+                            };
+                            // 评论的对象可以接收提醒
+                            if (jsonData.to !== '' && temUsername === jsonData.to) {
+                                temInfo.showAlert = true;
+                            }
+
+                            TemMessage.create({
+                                to: friend,
+                                type: "comment",
+                                content: JSON.stringify(temInfo),
+                            }).then(() => {
+                                console.log('temp message: comment created');
+                            });
+                        }
+                    });
+                }
+
+
+            });
+        }).catch(error=>{
+            console.log(error);
+        });
+    });
 
 });
 
