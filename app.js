@@ -156,94 +156,6 @@ io.on('connection', (socket) => {
         });
     });
 
-    socket.on('reconfirm', (data, func) => {
-        let username = JSON.parse(data).username;
-        if (currentUsers[username]!==null) {
-            currentUsers[username] = socket;
-            console.log('reconnect:'+username);
-
-            /*  处理离线信息  */
-            TemMessage.findAll({
-                where: {to: username},
-                order: 'type'
-            }).then(tems => {
-                let allTemMessage = tems.map(tem => {
-                    /*  离线好友请求  */
-                    if (tem.type === 'friend') {
-                        return User.findOne({
-                            where: {username: tem.content}
-                        }).then(user => {
-                            return socket.emit('receiveFriendReq', JSON.stringify(user));
-                        })
-                    }
-                    /*  离线聊天信息  */
-                    else if (tem.type === 'message') {
-                        return socket.emit('receiveMessage', tem.content);
-
-                    }
-                    /*  离线动态  */
-                    else if (tem.type === 'moment') {
-                        return returnMoment(tem.content, username).then(moment => {
-                            return socket.emit('receiveMoment', JSON.stringify(moment));
-                        });
-                    }
-                    /*  离线 赞  */
-                    else if (tem.type === 'like') {
-                        let temContent = JSON.parse(tem.content);
-                        return returnMoment(temContent.id, username).then(moment => {
-                            let temInfo = {
-                                receiveMoment: moment,
-                                changeTO: temContent.changeTO,
-                                isOwner: temContent.isOwner
-                            };
-                            return socket.emit('receiveChangeLike', JSON.stringify(temInfo));
-                        });
-                    }
-                    /*  离线 评论  */
-                    else if (tem.type === 'comment') {
-                        let temData = JSON.parse(tem.content);
-                        let momentId = temData.id;
-                        let showAlert = temData.showAlert;
-                        let username = tem.to;
-                        return returnMoment(momentId, username).then(receiveMoment => {
-                            let temInfo = {
-                                receiveMoment: receiveMoment,
-                                showAlert: showAlert
-                            };
-
-                            return socket.emit('receiveComment', JSON.stringify(temInfo));
-                        });
-                    }
-                    /*  离线好友确认  */
-                    else if (tem.type === 'acceptFriend') {
-                        return User.findOne({
-                            where: {username: tem.content}
-                        }).then(user => {
-                            return socket.emit('friendReqAssent', JSON.stringify(user));
-                        })
-                    }
-
-                });
-
-                Promise.all(allTemMessage).then(data => {
-                    console.log('temmessage broadcasted');
-
-                    /*  删除已发送的离线信息  */
-                    TemMessage.destroy({
-                        where: {to: username}
-                    }).then(() => {
-                        console.log('temmessage deleted');
-                    });
-                });
-            });
-        }
-            
-        func({
-            success: true,
-            data: 'success'
-        });
-    });
-
     /*  登录  */
     socket.on('login', (username, func) => {
         /*  用户顶替  */
@@ -341,7 +253,14 @@ io.on('connection', (socket) => {
 
     // 前台断开socket连接
     socket.on('disconnect', () => {
-        console.log('user disconnected');
+        let username;
+        for (let [k, v] of Object.entries(currentUsers)) {
+            if (v === socket) {
+                username = k;
+            }
+        }
+        currentUsers[username] = null;
+        console.log(username+' disconnected');
     });
 
     // 登出
@@ -357,7 +276,7 @@ io.on('connection', (socket) => {
     /*  好友请求  */
     socket.on('friendReq', (data, func) => {
         let username = JSON.parse(data);
-        console.log(currentUsers[username.friendUsername]);
+        console.log(username.friendUsername);
         if (currentUsers[username.friendUsername]) {
             User.findOne({
                 where: {username: username.myUsername},
