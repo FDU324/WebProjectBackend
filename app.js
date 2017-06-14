@@ -452,23 +452,41 @@ io.on('connection', (socket) => {
     socket.on('sendMessage', (data, func) => {
         let jsonData = JSON.parse(data);
 
-        if (currentUsers[jsonData.to])
-            currentUsers[jsonData.to].emit('receiveMessage', data);
-        else {
-            /*  离线处理  */
-            TemMessage.create({
-                to: jsonData.to,
-                type: 'message',
-                content: data,
-            }).then(function () {
-                console.log('temp message created');
-            }).catch(function (err) {
-                console.log('failed: ' + err);
-            });
-        }
-        func({
-            success: true,
-            data: 'success'
+        Friend.findOne({
+            where: {
+                $or: [
+                    {first: jsonData.to},
+                    {second: jsonData.to}
+                ]
+            }
+        }).then(friend => {
+            if (friend==null) {
+                socket.emit('refuseMessage', data);
+                func({
+                    success: false,
+                    data: 'refuse'
+                });
+            }
+            else {
+                if (currentUsers[jsonData.to])
+                    currentUsers[jsonData.to].emit('receiveMessage', data);
+                else {
+                    /*  离线处理  */
+                    TemMessage.create({
+                        to: jsonData.to,
+                        type: 'message',
+                        content: data,
+                    }).then(function () {
+                        console.log('temp message created');
+                    }).catch(function (err) {
+                        console.log('failed: ' + err);
+                    });
+                }
+                func({
+                    success: true,
+                    data: 'success'
+                });
+            }
         });
     });
 
