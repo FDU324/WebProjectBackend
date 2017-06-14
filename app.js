@@ -159,7 +159,7 @@ io.on('connection', (socket) => {
     /*  登录  */
     socket.on('login', (username, func) => {
         /*  用户顶替  */
-        if (currentUsers[username]!==null) {
+        if (currentUsers[username]!=null) {
             currentUsers[username].emit('logout');
         }
         
@@ -187,7 +187,6 @@ io.on('connection', (socket) => {
                 /*  离线聊天信息  */
                 else if (tem.type === 'message') {
                     return socket.emit('receiveMessage', tem.content);
-
                 }
                 /*  离线动态  */
                 else if (tem.type === 'moment') {
