@@ -463,7 +463,7 @@ io.on('connection', (socket) => {
             if (friend==null) {
                 socket.emit('refuseMessage', data);
                 func({
-                    success: false,
+                    success: true,
                     data: 'refuse'
                 });
             }
