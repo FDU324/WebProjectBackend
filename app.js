@@ -378,11 +378,12 @@ io.on('connection', (socket) => {
         Friend.findOne({
             where: {
                 $or: [
-                    {first: jsonData.to},
-                    {second: jsonData.to}
+                    {first: jsonData.to, second: jsonData.from},
+                    {second: jsonData.to, first: jsonData.from}
                 ]
             }
         }).then(friend => {
+            console.log('sendMessage: '+friend);
             if (friend==null) {
                 socket.emit('refuseMessage', data);
                 func({
