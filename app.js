@@ -179,7 +179,8 @@ io.on('connection', (socket) => {
                 /*  离线好友请求  */
                 if (tem.type === 'friend') {
                     return User.findOne({
-                        where: {username: tem.content}
+                        where: {username: tem.content},
+                        attributes: ['username', 'nickname', ['userImage', 'userimage'], 'location']
                     }).then(user => {
                         return socket.emit('receiveFriendReq', JSON.stringify(user));
                     })
@@ -228,7 +229,8 @@ io.on('connection', (socket) => {
                 /*  离线好友确认  */
                 else if (tem.type === 'acceptFriend') {
                     return User.findOne({
-                        where: {username: tem.content}
+                        where: {username: tem.content},
+                        attributes: ['username', 'nickname', ['userImage', 'userimage'], 'location']
                     }).then(user => {
                         return socket.emit('friendReqAssent', JSON.stringify(user));
                     })
@@ -279,6 +281,7 @@ io.on('connection', (socket) => {
         if (currentUsers[username.friendUsername]) {
             User.findOne({
                 where: {username: username.myUsername},
+                attributes: ['username', 'nickname', ['userImage', 'userimage'], 'location']
             }).then((user) => {
                 currentUsers[username.friendUsername].emit('receiveFriendReq', JSON.stringify(user));
             }).catch((err) => {
@@ -317,6 +320,7 @@ io.on('connection', (socket) => {
 
             User.findOne({
                 where: {username: username.myUsername},
+                attributes: ['username', 'nickname', ['userImage', 'userimage'], 'location']
             }).then((user) => {
                 if (currentUsers[username.friendUsername]) {
                     currentUsers[username.friendUsername].emit('friendReqAssent', JSON.stringify(user));
@@ -350,7 +354,8 @@ io.on('connection', (socket) => {
                     {first: username.friendUsername, second: username.myUsername},
                     {first: username.myUsername, second: username.friendUsername}
                 ]
-            }
+            },
+            attributes: ['username', 'nickname', ['userImage', 'userimage'], 'location']
         }).then(() => {
             console.log("friend deleted " + username.myUsername);
             func({
